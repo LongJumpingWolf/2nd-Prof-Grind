@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PYQ Atlas — Pathology Paper 1 Frequency Map</title>
+<meta name="description" content="Topic-wise frequency map of MUHS Pathology Paper 1 past year questions, cross-referenced against Robbins & Cotran." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ Header ============ -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">Rx</span>
+        <div class="brand-text">
+          <h1>PYQ Atlas</h1>
+          <p>Pathology Paper 1 · frequency-mapped against Robbins &amp; Cotran</p>
+        </div>
+      </div>
+      <div class="brand-stats" id="global-stats" aria-live="polite"></div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ Chapter rail ============ -->
+    <nav class="rail" id="chapter-rail" aria-label="Chapters">
+      <div class="rail-label">Chapters</div>
+      <ol id="chapter-list" class="chapter-list"></ol>
+    </nav>
+
+    <!-- ============ Main content ============ -->
+    <main class="content">
+
+      <div class="content-head">
+        <div class="content-head-title">
+          <span class="chapter-eyebrow" id="chapter-eyebrow">Chapter</span>
+          <h2 id="chapter-title">—</h2>
+        </div>
+
+        <div class="controls">
+          <div class="control-group" role="group" aria-label="Filter by question type">
+            <span class="control-label">Show</span>
+            <div class="segmented" id="type-filter">
+              <button class="seg-btn active" data-type="all">All</button>
+              <button class="seg-btn" data-type="laq">LAQ</button>
+              <button class="seg-btn" data-type="saq">SAQ</button>
+              <button class="seg-btn" data-type="mcq">MCQ</button>
+            </div>
+          </div>
+
+          <div class="control-group" role="group" aria-label="Sort topics">
+            <span class="control-label">Order</span>
+            <div class="segmented" id="sort-filter">
+              <button class="seg-btn active" data-sort="textbook">Textbook order</button>
+              <button class="seg-btn" data-sort="frequency">Most repeated</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="topic-list" id="topic-list"></div>
+
+    </main>
+  </div>
+
+  <footer class="foot">
+    <p>Built from verbatim MUHS PYQ banks (S = Summer, W = Winter, two-digit year) cross-referenced against the Robbins &amp; Cotran chapter text. Frequency = total exam sittings a fact/question has appeared in.</p>
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
