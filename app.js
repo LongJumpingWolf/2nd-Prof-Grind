@@ -5,6 +5,7 @@
   let activeChapter = null;
   let typeFilter = "all";     // all | laq | saq | mcq
   let sortMode = "textbook";  // textbook | frequency
+  let recencyFilter = "all";  // all | recent
   const collapsedTopics = new Set(); // topic keys collapsed by user
 
   const chapterListEl = document.getElementById("chapter-list");
@@ -82,6 +83,14 @@
     renderChapter();
   });
 
+  document.getElementById("recency-filter").addEventListener("click", (e) => {
+    const btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    recencyFilter = btn.dataset.recency;
+    setActiveButton("recency-filter", btn);
+    renderChapter();
+  });
+
   function setActiveButton(groupId, btn) {
     document.querySelectorAll(`#${groupId} .seg-btn`).forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
@@ -95,12 +104,15 @@
     chapterEyebrowEl.textContent = `Chapter ${ch.num} · ${ch.total_freq} tracked repeats`;
     chapterTitleEl.textContent = ch.title;
 
-    let topics = ch.topics.slice();
+    let topics = ch.topics.map((t) => applyRecencyFilter(t));
 
     // filter out topics with zero items in the selected type
     if (typeFilter !== "all") {
       topics = topics.filter((t) => t[typeFilter] && t[typeFilter].length > 0);
     }
+
+    // filter out topics with no items at all (can happen after recency filtering)
+    topics = topics.filter((t) => t.mcq.length + t.saq.length + t.laq.length > 0);
 
     // sort
     if (sortMode === "frequency") {
@@ -110,16 +122,32 @@
     }
 
     if (topics.length === 0) {
-      topicListEl.innerHTML = `<div class="empty-state">No ${typeFilter.toUpperCase()} questions recorded for this chapter.</div>`;
+      const scopeLabel = recencyFilter === "recent" ? " in the last 5 years" : "";
+      topicListEl.innerHTML = `<div class="empty-state">No ${typeFilter.toUpperCase()} questions recorded for this chapter${scopeLabel}.</div>`;
       return;
     }
 
-    const maxFreq = Math.max(...ch.topics.map((t) => t.freq), 1);
+    const maxFreq = Math.max(...topics.map((t) => t.freq), 1);
 
     topicListEl.innerHTML = "";
     topics.forEach((topic) => {
       topicListEl.appendChild(renderTopicCard(ch.num, topic, maxFreq));
     });
+  }
+
+  // returns a shallow-filtered copy of a topic: when recencyFilter is "recent",
+  // keeps only items with at least one occurrence in the last 5 academic years,
+  // and swaps the displayed frequency to the recent-window count.
+  function applyRecencyFilter(topic) {
+    if (recencyFilter !== "recent") return topic;
+    const filtered = {
+      ...topic,
+      mcq: topic.mcq.filter((i) => i.recent_occurrences > 0),
+      saq: topic.saq.filter((i) => i.recent_occurrences > 0),
+      laq: topic.laq.filter((i) => i.recent_occurrences > 0),
+      freq: topic.recent_freq,
+    };
+    return filtered;
   }
 
   function renderTopicCard(chNum, topic, maxFreq) {
@@ -141,6 +169,7 @@
 
     const head = document.createElement("div");
     head.className = "topic-head";
+    const freqLabel = recencyFilter === "recent" ? "last 5 yrs" : "total";
     head.innerHTML = `
       <div class="topic-heading">
         <h3 class="topic-name">${escapeHtml(topic.name)}</h3>
@@ -148,7 +177,7 @@
       </div>
       <div class="freq-block">
         <div class="freq-bar-wrap"><div class="freq-bar-fill" style="width:${barPct}%"></div></div>
-        <span class="freq-number">${topic.freq}× <small>total</small></span>
+        <span class="freq-number">${topic.freq}× <small>${freqLabel}</small></span>
         <span class="chevron">▾</span>
       </div>
     `;
@@ -255,7 +284,12 @@
     const trending = item.trending
       ? `<span class="tag tag-trending">▲ recent 5-yr surge</span>`
       : "";
-    const freqLabel = item.occurrences > 1 ? `${item.occurrences}× repeated` : `asked once`;
+    let freqLabel;
+    if (recencyFilter === "recent") {
+      freqLabel = item.recent_occurrences > 1 ? `${item.recent_occurrences}× in last 5 yrs` : `once in last 5 yrs`;
+    } else {
+      freqLabel = item.occurrences > 1 ? `${item.occurrences}× repeated` : `asked once`;
+    }
     return `
       <div class="q-tags">
         <span class="tag tag-freq">${freqLabel}</span>
