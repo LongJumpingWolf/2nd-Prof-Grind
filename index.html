@@ -68,7 +68,12 @@
             <span class="control-label">Recency</span>
             <div class="segmented" id="recency-filter">
               <button class="seg-btn active" data-recency="all">All years</button>
-              <button class="seg-btn" data-recency="recent">Last 5 yrs only</button>
+              <button class="seg-btn" data-recency="recent">Last N yrs only</button>
+            </div>
+            <div class="recency-slider-wrap" id="recency-slider-wrap" hidden>
+              <input type="range" id="recency-slider" class="recency-slider" min="1" max="1" value="5" step="1" />
+              <span class="recency-slider-label" id="recency-slider-label">5 yrs</span>
+              <span class="recency-slider-range" id="recency-slider-range"></span>
             </div>
           </div>
         </div>

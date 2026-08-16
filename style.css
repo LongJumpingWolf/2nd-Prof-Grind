@@ -269,6 +269,31 @@ a{ color: inherit; }
   font-weight: 600;
 }
 
+.recency-slider-wrap{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+.recency-slider{
+  width: 120px;
+  accent-color: var(--emerald);
+  cursor: pointer;
+}
+.recency-slider-label{
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--emerald-dark);
+  min-width: 38px;
+}
+.recency-slider-range{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
 /* ============ Topic cards ============ */
 .topic-list{
   display: flex;
@@ -392,11 +417,30 @@ a{ color: inherit; }
   align-items: flex-start;
   gap: 10px;
 }
+.q-check{
+  flex-shrink: 0;
+  margin-top: 3px;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--emerald);
+  cursor: pointer;
+}
 .q-text{
   flex: 1;
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink);
+  transition: color 0.15s ease;
+}
+.q-item.checked{
+  opacity: 0.6;
+}
+.q-item.checked .q-text{
+  text-decoration: line-through;
+  color: var(--ink-faint);
+}
+.q-item.checked .mcq-block{
+  opacity: 0.7;
 }
 .q-tags{
   display: flex;

@@ -2,10 +2,12 @@
   "use strict";
 
   let DATA = [];
+  let META = { minYear: 2000, maxYear: 2024 };
   let activeChapter = null;
   let typeFilter = "all";     // all | laq | saq | mcq
   let sortMode = "textbook";  // textbook | frequency
   let recencyFilter = "all";  // all | recent
+  let recencyN = 5;           // customizable "last N years"
   const collapsedTopics = new Set(); // topic keys collapsed by user
 
   const chapterListEl = document.getElementById("chapter-list");
@@ -13,12 +15,37 @@
   const chapterEyebrowEl = document.getElementById("chapter-eyebrow");
   const chapterTitleEl = document.getElementById("chapter-title");
   const globalStatsEl = document.getElementById("global-stats");
+  const sliderWrapEl = document.getElementById("recency-slider-wrap");
+  const sliderEl = document.getElementById("recency-slider");
+  const sliderLabelEl = document.getElementById("recency-slider-label");
+  const sliderRangeEl = document.getElementById("recency-slider-range");
+
+  // ---------- checkbox persistence (localStorage) ----------
+  const CHECK_STORAGE_KEY = "pyqAtlasChecked";
+  let checkedState = {};
+  try {
+    checkedState = JSON.parse(localStorage.getItem(CHECK_STORAGE_KEY) || "{}");
+  } catch (e) {
+    checkedState = {};
+  }
+  function saveCheckedState() {
+    try {
+      localStorage.setItem(CHECK_STORAGE_KEY, JSON.stringify(checkedState));
+    } catch (e) {
+      /* storage unavailable — fail silently */
+    }
+  }
+  function itemId(chNum, type, item) {
+    return `ch${chNum}-${type}-${item.n}`;
+  }
 
   fetch("data.json")
     .then((r) => r.json())
     .then((data) => {
-      DATA = data;
+      DATA = data.chapters || data; // backward compatible with flat-array shape
+      META = data.meta || META;
       activeChapter = DATA[0].num;
+      setupRecencySlider();
       renderChapterRail();
       renderGlobalStats();
       renderChapter();
@@ -26,6 +53,43 @@
     .catch((err) => {
       topicListEl.innerHTML = `<div class="empty-state">Could not load data.json — ${err}</div>`;
     });
+
+  // ---------- recency slider setup ----------
+  function setupRecencySlider() {
+    const span = Math.max(1, META.maxYear - META.minYear + 1);
+    sliderEl.min = "1";
+    sliderEl.max = String(span);
+    sliderEl.value = String(Math.min(recencyN, span));
+    recencyN = parseInt(sliderEl.value, 10);
+    sliderRangeEl.textContent = `(data spans ${META.minYear}–${META.maxYear})`;
+    updateSliderLabel();
+
+    sliderEl.addEventListener("input", () => {
+      recencyN = parseInt(sliderEl.value, 10);
+      updateSliderLabel();
+      renderChapterRail();
+      renderChapter();
+    });
+  }
+
+  function updateSliderLabel() {
+    const since = sinceYear();
+    sliderLabelEl.textContent = `${recencyN} yr${recencyN === 1 ? "" : "s"} (${since}–${META.maxYear})`;
+  }
+
+  function sinceYear() {
+    return META.maxYear - recencyN + 1;
+  }
+
+  // an item counts as "recent" under the current N-year window if it has
+  // at least one exam-sitting year >= sinceYear()
+  function itemRecentCount(item) {
+    const cutoff = sinceYear();
+    return (item.years || []).filter((y) => y >= cutoff).length;
+  }
+  function itemIsRecent(item) {
+    return itemRecentCount(item) > 0;
+  }
 
   function renderGlobalStats() {
     const totalFreq = DATA.reduce((s, c) => s + c.total_freq, 0);
@@ -38,6 +102,26 @@
     2: "Paper 2 — Systemic Pathology",
     appendix: "Appendix",
   };
+
+  // computes the badge count for a chapter under the currently active
+  // type + recency filters (sum of occurrences, matching the "×N" semantics
+  // used everywhere else in the UI)
+  function chapterFilteredFreq(ch) {
+    const types = typeFilter === "all" ? ["mcq", "saq", "laq"] : [typeFilter];
+    let sum = 0;
+    ch.topics.forEach((t) => {
+      types.forEach((typ) => {
+        t[typ].forEach((item) => {
+          if (recencyFilter === "recent") {
+            sum += itemRecentCount(item);
+          } else {
+            sum += item.occurrences;
+          }
+        });
+      });
+    });
+    return sum;
+  }
 
   function renderChapterRail() {
     chapterListEl.innerHTML = "";
@@ -54,7 +138,8 @@
       const btn = document.createElement("button");
       btn.className = "chapter-item" + (ch.num === activeChapter ? " active" : "");
       const chLabel = ch.paper === "appendix" ? `Appx. ${ch.num}` : `Ch. ${ch.num}`;
-      btn.innerHTML = `<span class="ch-num">${chLabel}</span>${escapeHtml(ch.title)}<span class="ch-freq">${ch.total_freq}×</span>`;
+      const freqShown = chapterFilteredFreq(ch);
+      btn.innerHTML = `<span class="ch-num">${chLabel}</span>${escapeHtml(ch.title)}<span class="ch-freq">${freqShown}×</span>`;
       btn.addEventListener("click", () => {
         activeChapter = ch.num;
         renderChapterRail();
@@ -72,6 +157,7 @@
     if (!btn) return;
     typeFilter = btn.dataset.type;
     setActiveButton("type-filter", btn);
+    renderChapterRail();
     renderChapter();
   });
 
@@ -88,6 +174,8 @@
     if (!btn) return;
     recencyFilter = btn.dataset.recency;
     setActiveButton("recency-filter", btn);
+    sliderWrapEl.hidden = recencyFilter !== "recent";
+    renderChapterRail();
     renderChapter();
   });
 
@@ -101,7 +189,8 @@
     const ch = DATA.find((c) => c.num === activeChapter);
     if (!ch) return;
 
-    chapterEyebrowEl.textContent = `Chapter ${ch.num} · ${ch.total_freq} tracked repeats`;
+    const chFreqShown = chapterFilteredFreq(ch);
+    chapterEyebrowEl.textContent = `Chapter ${ch.num} · ${chFreqShown} tracked repeats`;
     chapterTitleEl.textContent = ch.title;
 
     let topics = ch.topics.map((t) => applyRecencyFilter(t));
@@ -122,7 +211,7 @@
     }
 
     if (topics.length === 0) {
-      const scopeLabel = recencyFilter === "recent" ? " in the last 5 years" : "";
+      const scopeLabel = recencyFilter === "recent" ? ` in the last ${recencyN} year${recencyN === 1 ? "" : "s"}` : "";
       topicListEl.innerHTML = `<div class="empty-state">No ${typeFilter.toUpperCase()} questions recorded for this chapter${scopeLabel}.</div>`;
       return;
     }
@@ -136,18 +225,18 @@
   }
 
   // returns a shallow-filtered copy of a topic: when recencyFilter is "recent",
-  // keeps only items with at least one occurrence in the last 5 academic years,
+  // keeps only items with at least one occurrence in the last N academic years,
   // and swaps the displayed frequency to the recent-window count.
   function applyRecencyFilter(topic) {
     if (recencyFilter !== "recent") return topic;
-    const filtered = {
-      ...topic,
-      mcq: topic.mcq.filter((i) => i.recent_occurrences > 0),
-      saq: topic.saq.filter((i) => i.recent_occurrences > 0),
-      laq: topic.laq.filter((i) => i.recent_occurrences > 0),
-      freq: topic.recent_freq,
-    };
-    return filtered;
+    const mcq = topic.mcq.filter(itemIsRecent);
+    const saq = topic.saq.filter(itemIsRecent);
+    const laq = topic.laq.filter(itemIsRecent);
+    const freq =
+      mcq.reduce((s, i) => s + itemRecentCount(i), 0) +
+      saq.reduce((s, i) => s + itemRecentCount(i), 0) +
+      laq.reduce((s, i) => s + itemRecentCount(i), 0);
+    return { ...topic, mcq, saq, laq, freq };
   }
 
   function renderTopicCard(chNum, topic, maxFreq) {
@@ -169,7 +258,7 @@
 
     const head = document.createElement("div");
     head.className = "topic-head";
-    const freqLabel = recencyFilter === "recent" ? "last 5 yrs" : "total";
+    const freqLabel = recencyFilter === "recent" ? `last ${recencyN} yr${recencyN === 1 ? "" : "s"}` : "total";
     head.innerHTML = `
       <div class="topic-heading">
         <h3 class="topic-name">${escapeHtml(topic.name)}</h3>
@@ -194,7 +283,7 @@
     order.forEach((type) => {
       const items = topic[type];
       if (!items || items.length === 0) return;
-      body.appendChild(renderTypeSection(type, items));
+      body.appendChild(renderTypeSection(chNum, type, items));
     });
 
     card.appendChild(head);
@@ -202,7 +291,7 @@
     return card;
   }
 
-  function renderTypeSection(type, items) {
+  function renderTypeSection(chNum, type, items) {
     const section = document.createElement("div");
     section.className = "type-section";
 
@@ -212,34 +301,64 @@
     section.appendChild(label);
 
     items.forEach((item) => {
-      section.appendChild(type === "mcq" ? renderMcqItem(item) : renderPlainItem(item));
+      section.appendChild(type === "mcq" ? renderMcqItem(chNum, item) : renderPlainItem(chNum, type, item));
     });
 
     return section;
   }
 
-  function renderPlainItem(item) {
+  function buildCheckbox(id, row) {
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "q-check";
+    cb.checked = !!checkedState[id];
+    cb.setAttribute("aria-label", "Mark question as reviewed");
+    if (cb.checked) row.classList.add("checked");
+    cb.addEventListener("change", () => {
+      checkedState[id] = cb.checked;
+      saveCheckedState();
+      row.classList.toggle("checked", cb.checked);
+    });
+    return cb;
+  }
+
+  function renderPlainItem(chNum, type, item) {
+    const id = itemId(chNum, type, item);
     const row = document.createElement("div");
     row.className = "q-item";
-    row.innerHTML = `
-      <div class="q-row">
-        <div class="q-text">${escapeHtml(item.q)}</div>
-        ${renderTags(item)}
-      </div>
-    `;
+
+    const rowInner = document.createElement("div");
+    rowInner.className = "q-row";
+
+    const cb = buildCheckbox(id, row);
+    const textEl = document.createElement("div");
+    textEl.className = "q-text";
+    textEl.textContent = item.q;
+
+    rowInner.appendChild(cb);
+    rowInner.appendChild(textEl);
+    rowInner.insertAdjacentHTML("beforeend", renderTags(item));
+
+    row.appendChild(rowInner);
     return row;
   }
 
-  function renderMcqItem(item) {
+  function renderMcqItem(chNum, item) {
+    const id = itemId(chNum, "mcq", item);
     const row = document.createElement("div");
     row.className = "q-item";
 
     const top = document.createElement("div");
     top.className = "q-row";
-    top.innerHTML = `
-      <div class="q-text">${escapeHtml(item.q)}</div>
-      ${renderTags(item)}
-    `;
+
+    const cb = buildCheckbox(id, row);
+    const textEl = document.createElement("div");
+    textEl.className = "q-text";
+    textEl.textContent = item.q;
+
+    top.appendChild(cb);
+    top.appendChild(textEl);
+    top.insertAdjacentHTML("beforeend", renderTags(item));
     row.appendChild(top);
 
     const block = document.createElement("div");
@@ -286,7 +405,8 @@
       : "";
     let freqLabel;
     if (recencyFilter === "recent") {
-      freqLabel = item.recent_occurrences > 1 ? `${item.recent_occurrences}× in last 5 yrs` : `once in last 5 yrs`;
+      const n = itemRecentCount(item);
+      freqLabel = n > 1 ? `${n}× in last ${recencyN} yr${recencyN === 1 ? "" : "s"}` : `once in last ${recencyN} yr${recencyN === 1 ? "" : "s"}`;
     } else {
       freqLabel = item.occurrences > 1 ? `${item.occurrences}× repeated` : `asked once`;
     }
