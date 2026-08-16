@@ -32,13 +32,28 @@
     globalStatsEl.innerHTML = `<b>${DATA.length}</b> chapters · <b>${totalTopics}</b> topics · <b>${totalFreq}</b> tracked repeats`;
   }
 
+  const PAPER_LABELS = {
+    1: "Paper 1 — General Pathology",
+    2: "Paper 2 — Systemic Pathology",
+    appendix: "Appendix",
+  };
+
   function renderChapterRail() {
     chapterListEl.innerHTML = "";
+    let currentPaper = null;
     DATA.forEach((ch) => {
+      if (ch.paper !== currentPaper) {
+        currentPaper = ch.paper;
+        const sectionLabel = document.createElement("li");
+        sectionLabel.className = "rail-section-label";
+        sectionLabel.textContent = PAPER_LABELS[currentPaper] || `Paper ${currentPaper}`;
+        chapterListEl.appendChild(sectionLabel);
+      }
       const li = document.createElement("li");
       const btn = document.createElement("button");
       btn.className = "chapter-item" + (ch.num === activeChapter ? " active" : "");
-      btn.innerHTML = `<span class="ch-num">Ch. ${ch.num}</span>${escapeHtml(ch.title)}<span class="ch-freq">${ch.total_freq}×</span>`;
+      const chLabel = ch.paper === "appendix" ? `Appx. ${ch.num}` : `Ch. ${ch.num}`;
+      btn.innerHTML = `<span class="ch-num">${chLabel}</span>${escapeHtml(ch.title)}<span class="ch-freq">${ch.total_freq}×</span>`;
       btn.addEventListener("click", () => {
         activeChapter = ch.num;
         renderChapterRail();

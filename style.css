@@ -138,6 +138,17 @@ a{ color: inherit; }
   color: var(--ink-faint);
   margin: 4px 0 10px 10px;
 }
+.rail-section-label{
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--emerald);
+  padding: 14px 12px 6px;
+  list-style: none;
+}
+.chapter-list li:first-child .rail-section-label{ padding-top: 2px; }
 .chapter-list{
   list-style: none;
   margin: 0;
@@ -147,7 +158,12 @@ a{ color: inherit; }
   gap: 3px;
   position: sticky;
   top: 90px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  padding-right: 4px;
 }
+.chapter-list::-webkit-scrollbar{ width: 6px; }
+.chapter-list::-webkit-scrollbar-thumb{ background: var(--rule-strong); border-radius: 3px; }
 .chapter-item{
   display: block;
   width: 100%;
@@ -505,8 +521,15 @@ a{ color: inherit; }
     position: static;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: visible;
+    max-height: none;
     gap: 6px;
     padding-bottom: 6px;
+  }
+  .rail-section-label{
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
   }
   .chapter-item{ flex-shrink: 0; white-space: nowrap; }
   .chapter-item .ch-freq{ float: none; margin-left: 6px; }
