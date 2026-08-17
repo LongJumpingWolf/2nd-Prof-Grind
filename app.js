@@ -35,8 +35,8 @@
       /* storage unavailable — fail silently */
     }
   }
-  function itemId(chNum, type, item) {
-    return `ch${chNum}-${type}-${item.n}`;
+  function itemId(chNum, topicOrder, type, item) {
+    return `ch${chNum}-tp${topicOrder}-${type}-${item.n}`;
   }
 
   fetch("data.json")
@@ -101,6 +101,8 @@
     1: "Paper 1 — General Pathology",
     2: "Paper 2 — Systemic Pathology",
     appendix: "Appendix",
+    microbiology: "Microbiology",
+    pharmacology: "Pharmacology",
   };
 
   // computes the badge count for a chapter under the currently active
@@ -137,7 +139,7 @@
       const li = document.createElement("li");
       const btn = document.createElement("button");
       btn.className = "chapter-item" + (ch.num === activeChapter ? " active" : "");
-      const chLabel = ch.paper === "appendix" ? `Appx. ${ch.num}` : `Ch. ${ch.num}`;
+      const chLabel = ch.paper === "appendix" ? `Appx. ${ch.num}` : (ch.paper === "microbiology" || ch.paper === "pharmacology") ? `${ch.num}` : `Ch. ${ch.num}`;
       const freqShown = chapterFilteredFreq(ch);
       btn.innerHTML = `<span class="ch-num">${chLabel}</span>${escapeHtml(ch.title)}<span class="ch-freq">${freqShown}×</span>`;
       btn.addEventListener("click", () => {
@@ -190,7 +192,8 @@
     if (!ch) return;
 
     const chFreqShown = chapterFilteredFreq(ch);
-    chapterEyebrowEl.textContent = `Chapter ${ch.num} · ${chFreqShown} tracked repeats`;
+    const eyebrowPrefix = ch.paper === "appendix" ? "Appendix" : (ch.paper === "microbiology" || ch.paper === "pharmacology") ? "Section" : "Chapter";
+    chapterEyebrowEl.textContent = `${eyebrowPrefix} ${ch.num} · ${chFreqShown} tracked repeats`;
     chapterTitleEl.textContent = ch.title;
 
     let topics = ch.topics.map((t) => applyRecencyFilter(t));
@@ -283,7 +286,7 @@
     order.forEach((type) => {
       const items = topic[type];
       if (!items || items.length === 0) return;
-      body.appendChild(renderTypeSection(chNum, type, items));
+      body.appendChild(renderTypeSection(chNum, topic.textbook_order, type, items));
     });
 
     card.appendChild(head);
@@ -291,7 +294,7 @@
     return card;
   }
 
-  function renderTypeSection(chNum, type, items) {
+  function renderTypeSection(chNum, topicOrder, type, items) {
     const section = document.createElement("div");
     section.className = "type-section";
 
@@ -301,7 +304,7 @@
     section.appendChild(label);
 
     items.forEach((item) => {
-      section.appendChild(type === "mcq" ? renderMcqItem(chNum, item) : renderPlainItem(chNum, type, item));
+      section.appendChild(type === "mcq" ? renderMcqItem(chNum, topicOrder, item) : renderPlainItem(chNum, topicOrder, type, item));
     });
 
     return section;
@@ -322,8 +325,8 @@
     return cb;
   }
 
-  function renderPlainItem(chNum, type, item) {
-    const id = itemId(chNum, type, item);
+  function renderPlainItem(chNum, topicOrder, type, item) {
+    const id = itemId(chNum, topicOrder, type, item);
     const row = document.createElement("div");
     row.className = "q-item";
 
@@ -343,8 +346,8 @@
     return row;
   }
 
-  function renderMcqItem(chNum, item) {
-    const id = itemId(chNum, "mcq", item);
+  function renderMcqItem(chNum, topicOrder, item) {
+    const id = itemId(chNum, topicOrder, "mcq", item);
     const row = document.createElement("div");
     row.className = "q-item";
 
