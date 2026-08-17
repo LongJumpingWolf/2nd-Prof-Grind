@@ -132,16 +132,23 @@ img{ max-width: 100%; }
   flex: 1;
 }
 
-/* ============ Mobile nav (native selects, no horizontal scroll) ============ */
+/* ============ Mobile nav (custom-styled dropdowns, no horizontal scroll) ============ */
 .mobile-nav{
   display: none; /* shown only under the mobile breakpoint */
   flex-direction: column;
   gap: 8px;
   margin-bottom: 14px;
 }
-.mobile-select{
+.mobile-dropdown{
+  position: relative;
+}
+.mobile-dropdown-btn{
   width: 100%;
   max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   background: var(--paper-sunken);
   border: 1px solid var(--rule);
   border-radius: var(--radius-sm);
@@ -151,10 +158,74 @@ img{ max-width: 100%; }
   font-size: 14px;
   color: var(--ink);
   cursor: pointer;
+  text-align: left;
 }
-.mobile-select:focus-visible{
+.mobile-dropdown-btn span:first-child{
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.mobile-dropdown-btn:focus-visible{
   outline: 2px solid var(--emerald);
   outline-offset: 1px;
+}
+.dropdown-caret{
+  color: var(--ink-faint);
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.mobile-dropdown.open .dropdown-caret{ transform: rotate(180deg); }
+.mobile-dropdown.open .mobile-dropdown-btn{
+  border-color: var(--emerald);
+  background: var(--paper-raised);
+}
+
+.mobile-dropdown-panel{
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 40;
+  padding: 6px;
+}
+.dropdown-group-label{
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--emerald);
+  padding: 10px 10px 6px;
+}
+.dropdown-option{
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 10px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  cursor: pointer;
+  overflow-wrap: break-word;
+}
+.dropdown-option:hover{ background: var(--paper-sunken); color: var(--ink); }
+.dropdown-option.active{
+  background: var(--emerald-soft);
+  color: var(--emerald-dark);
+  font-weight: 600;
 }
 
 /* ============ Subject tabs ============ */

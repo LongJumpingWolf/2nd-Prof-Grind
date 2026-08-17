@@ -67,8 +67,20 @@
     <nav class="rail" id="chapter-rail" aria-label="Chapters">
       <!-- mobile-only: native dropdowns replace horizontal-scroll strips so nothing can overflow -->
       <div class="mobile-nav" id="mobile-nav">
-        <select class="mobile-select" id="subject-select" aria-label="Select subject"></select>
-        <select class="mobile-select" id="chapter-select" aria-label="Select chapter"></select>
+        <div class="mobile-dropdown" id="subject-dropdown">
+          <button type="button" class="mobile-dropdown-btn" id="subject-dropdown-btn" aria-haspopup="listbox" aria-expanded="false">
+            <span id="subject-dropdown-label">Subject</span>
+            <span class="dropdown-caret">▾</span>
+          </button>
+          <div class="mobile-dropdown-panel" id="subject-dropdown-panel" role="listbox" aria-label="Select subject" hidden></div>
+        </div>
+        <div class="mobile-dropdown" id="chapter-dropdown">
+          <button type="button" class="mobile-dropdown-btn" id="chapter-dropdown-btn" aria-haspopup="listbox" aria-expanded="false">
+            <span id="chapter-dropdown-label">Chapter</span>
+            <span class="dropdown-caret">▾</span>
+          </button>
+          <div class="mobile-dropdown-panel" id="chapter-dropdown-panel" role="listbox" aria-label="Select chapter" hidden></div>
+        </div>
       </div>
       <div class="subject-tabs" id="subject-tabs" role="tablist" aria-label="Subject"></div>
       <div class="rail-label">Chapters</div>

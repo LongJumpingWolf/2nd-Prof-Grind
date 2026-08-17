@@ -13,8 +13,14 @@
 
   const chapterListEl = document.getElementById("chapter-list");
   const subjectTabsEl = document.getElementById("subject-tabs");
-  const subjectSelectEl = document.getElementById("subject-select");
-  const chapterSelectEl = document.getElementById("chapter-select");
+  const subjectDropdownEl = document.getElementById("subject-dropdown");
+  const subjectDropdownBtnEl = document.getElementById("subject-dropdown-btn");
+  const subjectDropdownLabelEl = document.getElementById("subject-dropdown-label");
+  const subjectDropdownPanelEl = document.getElementById("subject-dropdown-panel");
+  const chapterDropdownEl = document.getElementById("chapter-dropdown");
+  const chapterDropdownBtnEl = document.getElementById("chapter-dropdown-btn");
+  const chapterDropdownLabelEl = document.getElementById("chapter-dropdown-label");
+  const chapterDropdownPanelEl = document.getElementById("chapter-dropdown-panel");
   const topicListEl = document.getElementById("topic-list");
   const chapterEyebrowEl = document.getElementById("chapter-eyebrow");
   const chapterTitleEl = document.getElementById("chapter-title");
@@ -208,64 +214,110 @@
     });
   }
 
-  // ---------- mobile nav (native selects, no horizontal scroll) ----------
-  function renderMobileNav() {
-    // subject select: build once (options don't change), just keep value synced
-    if (!subjectSelectEl.dataset.populated) {
-      subjectSelectEl.innerHTML = "";
-      SUBJECT_ORDER.forEach((subj) => {
-        const has = DATA.some((c) => chapterSubject(c) === subj);
-        if (!has) return;
-        const opt = document.createElement("option");
-        opt.value = subj;
-        opt.textContent = SUBJECT_LABELS[subj];
-        subjectSelectEl.appendChild(opt);
-      });
-      subjectSelectEl.dataset.populated = "true";
-    }
-    subjectSelectEl.value = activeSubject;
-
-    // chapter select: rebuild whenever this runs (cheap: at most ~27 options),
-    // grouped by paper section, matching the desktop rail's grouping
-    chapterSelectEl.innerHTML = "";
-    let currentPaper = null;
-    let currentGroup = null;
-    DATA.filter((ch) => chapterSubject(ch) === activeSubject).forEach((ch) => {
-      if (ch.paper !== currentPaper) {
-        currentPaper = ch.paper;
-        currentGroup = document.createElement("optgroup");
-        currentGroup.label = PAPER_LABELS[currentPaper] || `Paper ${currentPaper}`;
-        chapterSelectEl.appendChild(currentGroup);
-      }
-      const opt = document.createElement("option");
-      opt.value = String(ch.num);
-      const chLabel = ch.paper === "appendix" ? `Appx. ${ch.num}` : (ch.paper === "microbiology" || ch.paper === "pharmacology") ? `${ch.num}` : `Ch. ${ch.num}`;
-      opt.textContent = `${chLabel} — ${ch.title}`;
-      if (ch.num === activeChapter) opt.selected = true;
-      currentGroup.appendChild(opt);
+  // ---------- mobile nav (custom-styled dropdowns, no horizontal scroll) ----------
+  function closeAllDropdowns() {
+    [subjectDropdownEl, chapterDropdownEl].forEach((el) => {
+      el.classList.remove("open");
+      el.querySelector(".mobile-dropdown-btn").setAttribute("aria-expanded", "false");
+      el.querySelector(".mobile-dropdown-panel").hidden = true;
     });
   }
 
-  subjectSelectEl.addEventListener("change", () => {
-    const subj = subjectSelectEl.value;
-    if (subj === activeSubject) return;
-    activeSubject = subj;
-    const firstInSubject = DATA.find((c) => chapterSubject(c) === subj);
-    if (firstInSubject) activeChapter = firstInSubject.num;
-    renderSubjectTabs();
-    renderChapterRail();
-    renderMobileNav();
-    renderChapter();
+  function toggleDropdown(dropdownEl) {
+    const isOpen = dropdownEl.classList.contains("open");
+    closeAllDropdowns();
+    if (!isOpen) {
+      dropdownEl.classList.add("open");
+      dropdownEl.querySelector(".mobile-dropdown-btn").setAttribute("aria-expanded", "true");
+      dropdownEl.querySelector(".mobile-dropdown-panel").hidden = false;
+    }
+  }
+
+  subjectDropdownBtnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleDropdown(subjectDropdownEl);
+  });
+  chapterDropdownBtnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleDropdown(chapterDropdownEl);
+  });
+  document.addEventListener("click", (e) => {
+    if (!subjectDropdownEl.contains(e.target) && !chapterDropdownEl.contains(e.target)) {
+      closeAllDropdowns();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllDropdowns();
   });
 
-  chapterSelectEl.addEventListener("change", () => {
-    const match = DATA.find((c) => chapterSubject(c) === activeSubject && String(c.num) === chapterSelectEl.value);
-    if (!match) return;
-    activeChapter = match.num;
-    renderChapterRail();
-    renderMobileNav();
-    renderChapter();
-  });
+  function renderMobileNav() {
+    subjectDropdownLabelEl.textContent = SUBJECT_LABELS[activeSubject] || "Subject";
+
+    // subject panel: build once (options don't change)
+    if (!subjectDropdownPanelEl.dataset.populated) {
+      subjectDropdownPanelEl.innerHTML = "";
+      SUBJECT_ORDER.forEach((subj) => {
+        const has = DATA.some((c) => chapterSubject(c) === subj);
+        if (!has) return;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dropdown-option" + (subj === activeSubject ? " active" : "");
+        btn.setAttribute("role", "option");
+        btn.dataset.subj = subj;
+        btn.textContent = SUBJECT_LABELS[subj];
+        btn.addEventListener("click", () => {
+          closeAllDropdowns();
+          if (subj === activeSubject) return;
+          activeSubject = subj;
+          const firstInSubject = DATA.find((c) => chapterSubject(c) === subj);
+          if (firstInSubject) activeChapter = firstInSubject.num;
+          renderSubjectTabs();
+          renderChapterRail();
+          renderMobileNav();
+          renderChapter();
+        });
+        subjectDropdownPanelEl.appendChild(btn);
+      });
+      subjectDropdownPanelEl.dataset.populated = "true";
+    }
+    // keep the active-highlight synced even though the panel is only built once
+    subjectDropdownPanelEl.querySelectorAll(".dropdown-option").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.subj === activeSubject);
+    });
+
+    // chapter panel: rebuild whenever this runs (cheap: at most ~27 options),
+    // grouped by paper section, matching the desktop rail's grouping
+    chapterDropdownPanelEl.innerHTML = "";
+    let currentPaper = null;
+    let activeLabel = "Chapter";
+    DATA.filter((ch) => chapterSubject(ch) === activeSubject).forEach((ch) => {
+      if (ch.paper !== currentPaper) {
+        currentPaper = ch.paper;
+        const groupLabel = document.createElement("div");
+        groupLabel.className = "dropdown-group-label";
+        groupLabel.textContent = PAPER_LABELS[currentPaper] || `Paper ${currentPaper}`;
+        chapterDropdownPanelEl.appendChild(groupLabel);
+      }
+      const chLabel = ch.paper === "appendix" ? `Appx. ${ch.num}` : (ch.paper === "microbiology" || ch.paper === "pharmacology") ? `${ch.num}` : `Ch. ${ch.num}`;
+      const fullLabel = `${chLabel} — ${ch.title}`;
+      const isActive = ch.num === activeChapter;
+      if (isActive) activeLabel = fullLabel;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "dropdown-option" + (isActive ? " active" : "");
+      btn.setAttribute("role", "option");
+      btn.textContent = fullLabel;
+      btn.addEventListener("click", () => {
+        closeAllDropdowns();
+        activeChapter = ch.num;
+        renderChapterRail();
+        renderMobileNav();
+        renderChapter();
+      });
+      chapterDropdownPanelEl.appendChild(btn);
+    });
+    chapterDropdownLabelEl.textContent = activeLabel;
+  }
 
   // ---------- filter controls ----------
   document.getElementById("type-filter").addEventListener("click", (e) => {
