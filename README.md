@@ -3,15 +3,15 @@
 A static, filterable dashboard mapping every MCQ / SAQ / LAQ across the MUHS
 Pathology verbatim PYQ banks (Paper 1 — General Pathology, chapters 1–8;
 Paper 2 — Systemic Pathology, chapters 9–26 + Appendix I), the Microbiology
-MCQ bank (9 organ-system sections, ~65 textbook chapters), and the
-Pharmacology bank (14 subject areas, ~69 textbook subtopics) to a topic,
-showing how many exam sittings each topic and each individual question has
-repeated across.
+bank (9 organ-system sections, ~64 textbook chapters, MCQ+SAQ+LAQ), and the
+Pharmacology bank (14 subject areas, ~70 textbook subtopics, MCQ+SAQ+LAQ) to
+a topic, showing how many exam sittings each topic and each individual
+question has repeated across.
 
 ## What's inside
 
 - `index.html` / `style.css` / `app.js` — the site (vanilla JS, no build step)
-- `data.json` — the parsed + classified question bank: 50 chapters, 2,819 questions
+- `data.json` — the parsed + classified question bank: 50 chapters, 4,691 questions
 - `vercel.json` — static deployment config
 
 ## Features
@@ -19,9 +19,8 @@ repeated across.
 - **Chapter rail** — all 50 chapters, grouped under "Paper 1 — General
   Pathology," "Paper 2 — Systemic Pathology," "Appendix," "Microbiology," and
   "Pharmacology," each with a running frequency count
-- **Type filter** — All / LAQ / SAQ / MCQ (Microbiology is MCQ-only;
-  Pharmacology is almost entirely MCQ with a handful of SAQs; both correctly
-  show "no questions" for filters with nothing to show)
+- **Type filter** — All / LAQ / SAQ / MCQ (all three subjects now have SAQ and
+  LAQ coverage alongside MCQs)
 - **Order filter** — Textbook order (matches the source chapter flow) vs.
   Most repeated (topics sorted by summed MCQ+SAQ+LAQ occurrence count)
 - **Recency filter with a customizable window** — All years vs. Last N yrs
