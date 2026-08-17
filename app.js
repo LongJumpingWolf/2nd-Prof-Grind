@@ -395,22 +395,7 @@
     chapterEyebrowEl.textContent = `${eyebrowPrefix} ${ch.num} · ${chFreqShown} tracked repeats`;
     chapterTitleEl.textContent = ch.title;
 
-    let topics = ch.topics.map((t) => applyRecencyFilter(t));
-
-    // filter out topics with zero items in the selected type
-    if (typeFilter !== "all") {
-      topics = topics.filter((t) => t[typeFilter] && t[typeFilter].length > 0);
-    }
-
-    // filter out topics with no items at all (can happen after recency filtering)
-    topics = topics.filter((t) => t.mcq.length + t.saq.length + t.laq.length > 0);
-
-    // sort
-    if (sortMode === "frequency") {
-      topics = topics.slice().sort((a, b) => b.freq - a.freq);
-    } else {
-      topics = topics.slice().sort((a, b) => a.textbook_order - b.textbook_order);
-    }
+    let topics = getFilteredSortedTopics(ch);
 
     if (topics.length === 0) {
       const scopeLabel = recencyFilter === "recent" ? ` in the last ${recencyN} year${recencyN === 1 ? "" : "s"}` : "";
@@ -439,6 +424,145 @@
       saq.reduce((s, i) => s + itemRecentCount(i), 0) +
       laq.reduce((s, i) => s + itemRecentCount(i), 0);
     return { ...topic, mcq, saq, laq, freq };
+  }
+
+  // ---------- export (share sheet on mobile / download on desktop) ----------
+  const exportBtnEl = document.getElementById("export-btn");
+  const exportBtnLabelEl = document.getElementById("export-btn-label");
+
+  if (exportBtnLabelEl) {
+    exportBtnLabelEl.textContent = typeof navigator.share === "function" ? "Share" : "Export";
+  }
+
+  function sanitizeFilename(s) {
+    return String(s)
+      .replace(/[^\w\- ]+/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 70);
+  }
+
+  // builds the same filtered + sorted topic list currently on screen,
+  // using the exact same pipeline renderChapter() uses, so the export
+  // always matches what's visible
+  function getFilteredSortedTopics(ch) {
+    let topics = ch.topics.map((t) => applyRecencyFilter(t));
+    if (typeFilter !== "all") {
+      topics = topics.filter((t) => t[typeFilter] && t[typeFilter].length > 0);
+    }
+    topics = topics.filter((t) => t.mcq.length + t.saq.length + t.laq.length > 0);
+    if (sortMode === "frequency") {
+      topics = topics.slice().sort((a, b) => b.freq - a.freq);
+    } else {
+      topics = topics.slice().sort((a, b) => a.textbook_order - b.textbook_order);
+    }
+    return topics;
+  }
+
+  function buildExportText() {
+    const ch = DATA.find((c) => c.num === activeChapter);
+    if (!ch) return "";
+
+    const typeLabel = typeFilter === "all" ? "All (LAQ + SAQ + MCQ)" : typeFilter.toUpperCase();
+    const sortLabel = sortMode === "frequency" ? "Most repeated first" : "Textbook order";
+    const recencyLabel =
+      recencyFilter === "recent"
+        ? `Last ${recencyN} year${recencyN === 1 ? "" : "s"} only (${sinceYear()}–${META.maxYear})`
+        : "All years";
+
+    const lines = [];
+    lines.push("PYQ ATLAS — EXPORTED QUESTION SET");
+    lines.push("=".repeat(48));
+    lines.push(`Subject:  ${SUBJECT_LABELS[activeSubject] || activeSubject}`);
+    lines.push(`Chapter:  ${ch.title}`);
+    lines.push(`Filters applied to produce this file —`);
+    lines.push(`  Type:     ${typeLabel}`);
+    lines.push(`  Order:    ${sortLabel}`);
+    lines.push(`  Recency:  ${recencyLabel}`);
+    lines.push(`Exported: ${new Date().toLocaleString()}`);
+    lines.push("=".repeat(48));
+    lines.push("");
+
+    const topics = getFilteredSortedTopics(ch);
+
+    if (topics.length === 0) {
+      lines.push("(No questions match the current filters.)");
+      return lines.join("\n");
+    }
+
+    const order = typeFilter === "all" ? ["laq", "saq", "mcq"] : [typeFilter];
+
+    topics.forEach((topic) => {
+      const freqSuffix = recencyFilter === "recent" ? `in last ${recencyN} yr${recencyN === 1 ? "" : "s"}` : "total";
+      lines.push(`## ${topic.name}  (${topic.freq}× ${freqSuffix})`);
+      lines.push("");
+      order.forEach((type) => {
+        const items = topic[type];
+        if (!items || items.length === 0) return;
+        lines.push(`--- ${type.toUpperCase()} ---`);
+        items.forEach((item, idx) => {
+          const freqLabel =
+            recencyFilter === "recent"
+              ? `${itemRecentCount(item)}× in last ${recencyN} yr${recencyN === 1 ? "" : "s"}`
+              : item.occurrences > 1
+              ? `${item.occurrences}× repeated`
+              : "asked once";
+          lines.push(`${idx + 1}. ${item.q}`);
+          lines.push(`   [${freqLabel} — ${item.codes.join(", ")}]`);
+          if (type === "mcq") {
+            Object.entries(item.options).forEach(([letter, text]) => {
+              lines.push(`   ${letter}) ${text}`);
+            });
+            lines.push(`   Answer: ${item.answer}`);
+            lines.push(`   Explanation: ${item.explanation}`);
+          }
+          lines.push("");
+        });
+      });
+      lines.push("");
+    });
+
+    return lines.join("\n");
+  }
+
+  async function shareOrDownloadExport() {
+    const ch = DATA.find((c) => c.num === activeChapter);
+    const text = buildExportText();
+    const namePart = ch ? `${SUBJECT_LABELS[activeSubject] || ""}_${ch.title}` : "export";
+    const filename = `PYQ-Atlas_${sanitizeFilename(namePart)}.txt`;
+    const blob = new Blob([text], { type: "text/plain" });
+
+    if (typeof navigator.share === "function") {
+      try {
+        const file = new File([blob], filename, { type: "text/plain" });
+        if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        }
+        // some mobile browsers support share() but not file sharing -- fall
+        // back to sharing as plain text so the sheet still opens
+        await navigator.share({ title: filename, text });
+        return;
+      } catch (err) {
+        if (err && err.name === "AbortError") return; // user cancelled, don't also download
+        // any other failure -- fall through to download
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  if (exportBtnEl) {
+    exportBtnEl.addEventListener("click", () => {
+      shareOrDownloadExport();
+    });
   }
 
   function renderTopicCard(chNum, topic, maxFreq) {

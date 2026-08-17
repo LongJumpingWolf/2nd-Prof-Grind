@@ -409,6 +409,29 @@ img{ max-width: 100%; }
   font-weight: 600;
 }
 
+.export-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--emerald);
+  border: 1px solid var(--emerald-dark);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 8px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.export-btn:hover{ background: var(--emerald-dark); }
+.export-btn:active{ transform: translateY(1px); }
+.export-icon{ font-size: 12px; }
+.export-btn:focus-visible{
+  outline: 2px solid var(--emerald-dark);
+  outline-offset: 2px;
+}
+
 .recency-slider-wrap{
   display: flex;
   align-items: center;
