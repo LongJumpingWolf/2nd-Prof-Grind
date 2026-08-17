@@ -25,7 +25,7 @@ question has repeated across.
   Most repeated (topics sorted by summed MCQ+SAQ+LAQ occurrence count)
 - **Recency filter with a customizable window** — All years vs. Last N yrs
   only, where N is set with a slider bounded by the actual year range in the
-  data (currently 1970–2024, so the slider runs 1 to 55). Narrows both the
+  data (currently 1965–2025, so the slider runs 1 to 61). Narrows both the
   topic list and each topic's questions down to what's actually appeared in
   that window, and swaps every frequency badge (topic cards, per-question
   tags, and the chapter sidebar counts) to show the recent-window count
@@ -65,6 +65,17 @@ result into the existing chapter set. Just ask, and attach the new file.
 
 - **Occurrence count** for a single question = number of exam-sitting codes
   attached to it, e.g. `(W-13,18)` counts as 2, `(S-15)(W-17,20)` counts as 3.
+- **Attitude, Ethics & Communication (AETCOM)** is a new topic type, added
+  when the Summer 2025 papers (S-25) introduced NMC-mandated bioethics/
+  communication questions (informed consent, patient autonomy, professional
+  responsibilities) that don't map to any organ-system or drug-class topic.
+  Each subject got its own AETCOM topic in a reasonable "foundational"
+  chapter (e.g. Pathology's Cell Injury & Cell Death, Pharmacology's General
+  Pharmacology). A few S-25 pathology questions also covered hematology
+  content (transfusion reactions, iron-deficiency anemia) that doesn't fit
+  any Paper 1 chapter's organ-system scope; these went into a "Haematology
+  Topics (cross-topic)" bucket in Chapter 1, following the same cross-topic
+  convention used elsewhere in the taxonomy.
 - **Topic frequency** = sum of occurrence counts across every MCQ + SAQ + LAQ
   classified under that topic.
 - **"Recent surge"** tag = the question has 2+ occurrences in the most recent
