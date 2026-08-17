@@ -1,0 +1,29 @@
+{
+  "name": "PYQ Atlas",
+  "short_name": "PYQ Atlas",
+  "description": "Topic-wise frequency map of MUHS Pathology, Microbiology, and Pharmacology past year questions.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdf9ec",
+  "theme_color": "#00173c",
+  "icons": [
+    {
+      "src": "/icons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
