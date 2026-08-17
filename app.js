@@ -49,6 +49,28 @@
     return `ch${chNum}-tp${topicOrder}-${type}-${item.n}`;
   }
 
+  // ---------- recency preference persistence (localStorage) ----------
+  const PREFS_STORAGE_KEY = "pyqAtlasPrefs";
+  let prefs = {};
+  try {
+    prefs = JSON.parse(localStorage.getItem(PREFS_STORAGE_KEY) || "{}");
+  } catch (e) {
+    prefs = {};
+  }
+  if (Number.isFinite(prefs.recencyN) && prefs.recencyN >= 1) {
+    recencyN = prefs.recencyN;
+  }
+  if (prefs.recencyFilter === "recent" || prefs.recencyFilter === "all") {
+    recencyFilter = prefs.recencyFilter;
+  }
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ recencyN, recencyFilter }));
+    } catch (e) {
+      /* storage unavailable — fail silently */
+    }
+  }
+
   // maps the fine-grained "paper" tag on each chapter to a top-level subject
   // used for the subject tab switcher (Pathology bundles papers 1, 2, and the appendix)
   const SUBJECT_MAP = {
@@ -122,9 +144,17 @@
     sliderRangeEl.textContent = `(data spans ${META.minYear}–${META.maxYear})`;
     updateSliderLabel();
 
+    // apply a restored "recent" preference to the toggle + slider visibility
+    if (recencyFilter === "recent") {
+      const recentBtn = document.querySelector('#recency-filter .seg-btn[data-recency="recent"]');
+      if (recentBtn) setActiveButton("recency-filter", recentBtn);
+      sliderWrapEl.hidden = false;
+    }
+
     sliderEl.addEventListener("input", () => {
       recencyN = parseInt(sliderEl.value, 10);
       updateSliderLabel();
+      savePrefs();
       renderSubjectTabs();
       renderChapterRail();
       renderMobileNav();
@@ -344,6 +374,7 @@
     recencyFilter = btn.dataset.recency;
     setActiveButton("recency-filter", btn);
     sliderWrapEl.hidden = recencyFilter !== "recent";
+    savePrefs();
     renderSubjectTabs();
     renderChapterRail();
     renderChapter();
