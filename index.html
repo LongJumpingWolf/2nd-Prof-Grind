@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>PYQ Atlas — Pathology, Microbiology &amp; Pharmacology Frequency Map</title>
 <meta name="description" content="Topic-wise frequency map of MUHS Pathology, Microbiology, and Pharmacology past year questions, cross-referenced against the standard textbooks." />
 
@@ -65,6 +65,11 @@
 
     <!-- ============ Chapter rail ============ -->
     <nav class="rail" id="chapter-rail" aria-label="Chapters">
+      <!-- mobile-only: native dropdowns replace horizontal-scroll strips so nothing can overflow -->
+      <div class="mobile-nav" id="mobile-nav">
+        <select class="mobile-select" id="subject-select" aria-label="Select subject"></select>
+        <select class="mobile-select" id="chapter-select" aria-label="Select chapter"></select>
+      </div>
       <div class="subject-tabs" id="subject-tabs" role="tablist" aria-label="Subject"></div>
       <div class="rail-label">Chapters</div>
       <ol id="chapter-list" class="chapter-list"></ol>
