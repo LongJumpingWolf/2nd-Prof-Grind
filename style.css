@@ -508,10 +508,15 @@ img{ max-width: 100%; }
   font-weight: 600;
   color: var(--emerald-dark);
   white-space: nowrap;
+  background: var(--emerald-soft);
+  border: 1px solid var(--emerald-line);
+  border-radius: 999px;
+  padding: 4px 11px;
 }
 .freq-number small{
   font-weight: 400;
-  color: var(--ink-faint);
+  color: var(--emerald-dark);
+  opacity: 0.75;
   font-size: 10px;
 }
 .chevron{
