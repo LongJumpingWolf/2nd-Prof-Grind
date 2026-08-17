@@ -4,6 +4,7 @@
   let DATA = [];
   let META = { minYear: 2000, maxYear: 2024 };
   let activeChapter = null;
+  let activeSubject = null;   // pathology | microbiology | pharmacology
   let typeFilter = "all";     // all | laq | saq | mcq
   let sortMode = "textbook";  // textbook | frequency
   let recencyFilter = "all";  // all | recent
@@ -11,6 +12,7 @@
   const collapsedTopics = new Set(); // topic keys collapsed by user
 
   const chapterListEl = document.getElementById("chapter-list");
+  const subjectTabsEl = document.getElementById("subject-tabs");
   const topicListEl = document.getElementById("topic-list");
   const chapterEyebrowEl = document.getElementById("chapter-eyebrow");
   const chapterTitleEl = document.getElementById("chapter-title");
@@ -39,13 +41,35 @@
     return `ch${chNum}-tp${topicOrder}-${type}-${item.n}`;
   }
 
+  // maps the fine-grained "paper" tag on each chapter to a top-level subject
+  // used for the subject tab switcher (Pathology bundles papers 1, 2, and the appendix)
+  const SUBJECT_MAP = {
+    1: "pathology",
+    2: "pathology",
+    appendix: "pathology",
+    microbiology: "microbiology",
+    pharmacology: "pharmacology",
+  };
+  const SUBJECT_LABELS = {
+    pathology: "Pathology",
+    microbiology: "Microbiology",
+    pharmacology: "Pharmacology",
+  };
+  const SUBJECT_ORDER = ["pathology", "microbiology", "pharmacology"];
+
+  function chapterSubject(ch) {
+    return SUBJECT_MAP[ch.paper] || "pathology";
+  }
+
   fetch("data.json")
     .then((r) => r.json())
     .then((data) => {
       DATA = data.chapters || data; // backward compatible with flat-array shape
       META = data.meta || META;
+      activeSubject = chapterSubject(DATA[0]);
       activeChapter = DATA[0].num;
       setupRecencySlider();
+      renderSubjectTabs();
       renderChapterRail();
       renderGlobalStats();
       renderChapter();
@@ -53,6 +77,30 @@
     .catch((err) => {
       topicListEl.innerHTML = `<div class="empty-state">Could not load data.json — ${err}</div>`;
     });
+
+  function renderSubjectTabs() {
+    subjectTabsEl.innerHTML = "";
+    SUBJECT_ORDER.forEach((subj) => {
+      const chaptersInSubject = DATA.filter((c) => chapterSubject(c) === subj);
+      if (chaptersInSubject.length === 0) return;
+      const freqSum = chaptersInSubject.reduce((s, c) => s + chapterFilteredFreq(c), 0);
+      const btn = document.createElement("button");
+      btn.className = "subject-tab" + (subj === activeSubject ? " active" : "");
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", subj === activeSubject ? "true" : "false");
+      btn.innerHTML = `<span>${SUBJECT_LABELS[subj]}</span><span class="subject-tab-count">${chaptersInSubject.length} ch · ${freqSum}×</span>`;
+      btn.addEventListener("click", () => {
+        if (subj === activeSubject) return;
+        activeSubject = subj;
+        const firstInSubject = DATA.find((c) => chapterSubject(c) === subj);
+        if (firstInSubject) activeChapter = firstInSubject.num;
+        renderSubjectTabs();
+        renderChapterRail();
+        renderChapter();
+      });
+      subjectTabsEl.appendChild(btn);
+    });
+  }
 
   // ---------- recency slider setup ----------
   function setupRecencySlider() {
@@ -67,6 +115,7 @@
     sliderEl.addEventListener("input", () => {
       recencyN = parseInt(sliderEl.value, 10);
       updateSliderLabel();
+      renderSubjectTabs();
       renderChapterRail();
       renderChapter();
     });
@@ -128,7 +177,7 @@
   function renderChapterRail() {
     chapterListEl.innerHTML = "";
     let currentPaper = null;
-    DATA.forEach((ch) => {
+    DATA.filter((ch) => chapterSubject(ch) === activeSubject).forEach((ch) => {
       if (ch.paper !== currentPaper) {
         currentPaper = ch.paper;
         const sectionLabel = document.createElement("li");
@@ -159,6 +208,7 @@
     if (!btn) return;
     typeFilter = btn.dataset.type;
     setActiveButton("type-filter", btn);
+    renderSubjectTabs();
     renderChapterRail();
     renderChapter();
   });
@@ -177,6 +227,7 @@
     recencyFilter = btn.dataset.recency;
     setActiveButton("recency-filter", btn);
     sliderWrapEl.hidden = recencyFilter !== "recent";
+    renderSubjectTabs();
     renderChapterRail();
     renderChapter();
   });

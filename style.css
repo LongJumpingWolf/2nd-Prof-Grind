@@ -129,6 +129,45 @@ a{ color: inherit; }
   flex: 1;
 }
 
+/* ============ Subject tabs ============ */
+.subject-tabs{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.subject-tab{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: var(--paper-sunken);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-soft);
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.subject-tab:hover{ background: #EFECE0; color: var(--ink); }
+.subject-tab.active{
+  background: var(--emerald);
+  border-color: var(--emerald-dark);
+  color: #fff;
+}
+.subject-tab-count{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+.subject-tab.active .subject-tab-count{ color: rgba(255,255,255,0.75); }
+
 /* ============ Chapter rail ============ */
 .rail-label{
   font-family: var(--font-mono);
@@ -574,6 +613,17 @@ a{ color: inherit; }
     padding: 0 4px;
     display: flex;
     align-items: center;
+  }
+  .subject-tabs{
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .subject-tab{
+    flex-shrink: 0;
+    white-space: nowrap;
+    width: auto;
   }
   .chapter-item{ flex-shrink: 0; white-space: nowrap; }
   .chapter-item .ch-freq{ float: none; margin-left: 6px; }
