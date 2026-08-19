@@ -6,6 +6,7 @@
   let activeChapter = null;
   let activeSubject = null;   // pathology | microbiology | pharmacology
   let typeFilter = "all";     // all | laq | saq | mcq
+  let viewMode = "normal";    // normal | bullet
   let sortMode = "textbook";  // textbook | frequency
   let recencyFilter = "all";  // all | recent
   let recencyN = 5;           // customizable "last N years"
@@ -47,6 +48,32 @@
   }
   function itemId(chNum, topicOrder, type, item) {
     return `ch${chNum}-tp${topicOrder}-${type}-${item.n}`;
+  }
+
+  // computes { checked, total, percent } for a chapter, counting every
+  // MCQ+SAQ+LAQ item across all its topics against the persisted checkbox
+  // state (not filtered by the current type/recency filters -- progress is
+  // meant to be a stable measure of the whole chapter)
+  function computeChapterProgress(ch) {
+    let total = 0;
+    let checked = 0;
+    ch.topics.forEach((t, topicIdx) => {
+      ["mcq", "saq", "laq"].forEach((type) => {
+        t[type].forEach((item) => {
+          total++;
+          if (checkedState[itemId(ch.num, topicIdx, type, item)]) checked++;
+        });
+      });
+    });
+    const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+    return { checked, total, percent };
+  }
+
+  function progressPillHtml(ch) {
+    const { total, percent } = computeChapterProgress(ch);
+    if (total === 0) return "";
+    const cls = percent === 100 ? "progress-pill complete" : percent > 0 ? "progress-pill has-progress" : "progress-pill";
+    return `<span class="${cls}">${percent}%</span>`;
   }
 
   // ---------- recency preference persistence (localStorage) ----------
@@ -231,7 +258,7 @@
       btn.className = "chapter-item" + (ch.num === activeChapter ? " active" : "");
       const chLabel = ch.paper === "appendix" ? `Appx. ${ch.num}` : (ch.paper === "microbiology" || ch.paper === "pharmacology") ? `${ch.num}` : `Ch. ${ch.num}`;
       const freqShown = chapterFilteredFreq(ch);
-      btn.innerHTML = `<span class="ch-num">${chLabel}</span>${escapeHtml(ch.title)}<span class="ch-freq">${freqShown}×</span>`;
+      btn.innerHTML = `<span class="ch-num">${chLabel}</span>${escapeHtml(ch.title)}<span class="ch-badges">${progressPillHtml(ch)}<span class="ch-freq">${freqShown}×</span></span>`;
       btn.addEventListener("click", () => {
         activeChapter = ch.num;
         renderChapterRail();
@@ -336,7 +363,7 @@
       btn.type = "button";
       btn.className = "dropdown-option" + (isActive ? " active" : "");
       btn.setAttribute("role", "option");
-      btn.textContent = fullLabel;
+      btn.innerHTML = `<span class="dropdown-option-label">${escapeHtml(fullLabel)}</span>${progressPillHtml(ch)}`;
       btn.addEventListener("click", () => {
         closeAllDropdowns();
         activeChapter = ch.num;
@@ -403,6 +430,11 @@
       return;
     }
 
+    if (viewMode === "bullet") {
+      renderChapterBulletMode(ch, topics);
+      return;
+    }
+
     const maxFreq = Math.max(...topics.map((t) => t.freq), 1);
 
     topicListEl.innerHTML = "";
@@ -458,6 +490,185 @@
     }
     return topics;
   }
+
+  // ============================================================
+  // BULLET MODE — a separate, non-destructive rendering path.
+  // Reuses getFilteredSortedTopics() so it automatically respects
+  // whatever Type/Order/Recency filters are active (including the
+  // live recency slider -- this is what makes the bulleting
+  // "dynamic year depending" without any extra plumbing). Never
+  // reads or writes anything Normal mode depends on.
+  // ============================================================
+
+  // shared child-concept vocabulary across all three subjects. A "child"
+  // here means a recurring exam-answer concept (mechanism, test, feature)
+  // that shows up inside a topic's own question text -- not a new parent,
+  // since the parent is always the topic itself (already curated).
+  const BULLET_CHILD_CONCEPTS = [
+    // shared across subjects
+    "pathogenesis", "pathogenicity", "etiology", "aetiology", "epidemiology",
+    "classification", "morphology", "clinical features", "clinical presentation",
+    "diagnosis", "laboratory diagnosis", "differential diagnosis", "treatment",
+    "management", "prevention", "prophylaxis", "chemoprophylaxis",
+    "complications", "prognosis", "risk factors", "types", "definition",
+    "life cycle", "mode of transmission", "transmission", "incubation period",
+    "immunity", "vaccine", "vaccination", "carrier state",
+    // pathology-specific
+    "gross features", "microscopic features", "special stains", "staging",
+    "grading", "immunohistochemistry", "differences", "complications and prognosis",
+    "morphological features", "radiological features", "biopsy",
+    // pharmacology-specific
+    "mechanism of action", "adverse effects", "adverse drug reactions",
+    "therapeutic uses", "indications", "contraindications", "dose",
+    "drug interactions", "pharmacokinetics", "precautions", "uses",
+    // microbiology-specific tests/media (kept short -- broad list already
+    // covered by "laboratory diagnosis" above for most cases)
+    "blood culture", "stool culture", "widal test", "elisa", "pcr",
+    "gram stain", "acid-fast stain", "koh mount", "culture media",
+  ];
+  const BULLET_GAZETTEER = Array.from(new Set(BULLET_CHILD_CONCEPTS.map((s) => s.toLowerCase()))).sort(
+    (a, b) => b.length - a.length
+  );
+
+  function bulletDisplayCase(term) {
+    const small = new Set(["of", "and", "the", "in", "due", "to"]);
+    return term
+      .split(" ")
+      .map((w, i) => (i > 0 && small.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+      .join(" ");
+  }
+
+  // finds all BULLET_GAZETTEER terms mentioned across a topic's questions,
+  // ranked by how many distinct questions mention each one. Respects the
+  // active Type filter (All/LAQ/SAQ/MCQ), same convention Normal mode uses.
+  function extractBulletChildren(topic) {
+    const occurrences = {}; // term -> count of distinct questions
+    const typesToScan = typeFilter === "all" ? ["mcq", "saq", "laq"] : [typeFilter];
+    typesToScan.forEach((typ) => {
+      (topic[typ] || []).forEach((item) => {
+        const lower = item.q.toLowerCase().replace(/-/g, " ");
+        const foundInThisQ = new Set();
+        BULLET_GAZETTEER.forEach((term) => {
+          if (term.length < 4) return;
+          const idx = lower.indexOf(term);
+          if (idx === -1) return;
+          const beforeOk = idx === 0 || !/[a-z0-9]/.test(lower[idx - 1]);
+          const afterEnd = idx + term.length;
+          const afterOk = afterEnd >= lower.length || !/[a-z0-9]/.test(lower[afterEnd]);
+          if (beforeOk && afterOk) foundInThisQ.add(term);
+        });
+        foundInThisQ.forEach((term) => {
+          occurrences[term] = (occurrences[term] || 0) + 1;
+        });
+      });
+    });
+    return Object.entries(occurrences)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([term, count]) => ({ label: bulletDisplayCase(term), count }));
+  }
+
+  function bulletSlug(s) {
+    return String(s)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  }
+
+  // ---------- bullet-mode checkbox persistence (own localStorage key,
+  // completely separate from Normal mode's question-level checkboxes) ----------
+  const BULLET_CHECK_KEY = "pyqAtlasBulletChecked";
+  let bulletCheckedState = {};
+  try {
+    bulletCheckedState = JSON.parse(localStorage.getItem(BULLET_CHECK_KEY) || "{}");
+  } catch (e) {
+    bulletCheckedState = {};
+  }
+  function saveBulletCheckedState() {
+    try {
+      localStorage.setItem(BULLET_CHECK_KEY, JSON.stringify(bulletCheckedState));
+    } catch (e) {
+      /* storage unavailable -- fail silently */
+    }
+  }
+
+  function renderChapterBulletMode(ch, topics) {
+    topicListEl.innerHTML = "";
+    let cardIndex = 0;
+    topics.forEach((topic) => {
+      const card = document.createElement("article");
+      card.className = "bullet-topic-card";
+      card.style.animationDelay = Math.min(cardIndex * 90, 1400) + "ms";
+      cardIndex++;
+
+      const header = document.createElement("div");
+      header.className = "bullet-topic-header";
+      header.innerHTML = `
+        <h3 class="bullet-topic-name">${escapeHtml(topic.name)}</h3>
+        <span class="bullet-topic-freq">${topic.freq}×</span>
+      `;
+      card.appendChild(header);
+
+      const children = extractBulletChildren(topic);
+      const childrenWrap = document.createElement("div");
+      childrenWrap.className = "bullet-children";
+
+      if (children.length === 0) {
+        // "if one topic alone" -- no sub-concepts detected, so the checkbox
+        // goes on the topic itself instead of leaving it unchecked-able
+        const id = `bullet-ch${ch.num}-tp${topic.textbook_order}-topic`;
+        childrenWrap.appendChild(buildBulletRow(id, topic.name, topic.freq, true));
+      } else {
+        children.forEach((child) => {
+          const id = `bullet-ch${ch.num}-tp${topic.textbook_order}-${bulletSlug(child.label)}`;
+          childrenWrap.appendChild(buildBulletRow(id, child.label, child.count, false));
+        });
+      }
+
+      card.appendChild(childrenWrap);
+      topicListEl.appendChild(card);
+    });
+  }
+
+  function buildBulletRow(id, label, count, isFallback) {
+    const row = document.createElement("div");
+    row.className = "bullet-row" + (isFallback ? " fallback" : "");
+    const checked = !!bulletCheckedState[id];
+    if (checked) row.classList.add("checked");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "bullet-check";
+    cb.id = id;
+    cb.checked = checked;
+    cb.addEventListener("change", () => {
+      bulletCheckedState[id] = cb.checked;
+      saveBulletCheckedState();
+      row.classList.toggle("checked", cb.checked);
+    });
+
+    const lbl = document.createElement("label");
+    lbl.className = "bullet-label";
+    lbl.htmlFor = id;
+    lbl.textContent = label;
+
+    const countEl = document.createElement("span");
+    countEl.className = "bullet-count";
+    countEl.textContent = `${count}×`;
+
+    row.appendChild(cb);
+    row.appendChild(lbl);
+    row.appendChild(countEl);
+    return row;
+  }
+
+  // ---------- mode toggle ----------
+  document.getElementById("mode-filter").addEventListener("click", (e) => {
+    const btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    viewMode = btn.dataset.mode;
+    setActiveButton("mode-filter", btn);
+    renderChapter();
+  });
 
   function buildExportText() {
     const ch = DATA.find((c) => c.num === activeChapter);
@@ -644,6 +855,8 @@
       checkedState[id] = cb.checked;
       saveCheckedState();
       row.classList.toggle("checked", cb.checked);
+      renderChapterRail();
+      renderMobileNav();
     });
     return cb;
   }
