@@ -463,7 +463,7 @@
   const exportBtnLabelEl = document.getElementById("export-btn-label");
 
   if (exportBtnLabelEl) {
-    exportBtnLabelEl.textContent = typeof navigator.share === "function" ? "Share" : "Export";
+    exportBtnLabelEl.textContent = isMobileDevice() ? "Share" : "Export";
   }
 
   function sanitizeFilename(s) {
@@ -736,6 +736,16 @@
     return lines.join("\n");
   }
 
+  // desktop browsers (Edge on Windows, Safari on macOS) increasingly expose
+  // navigator.share too, which would wrongly pop the share sheet on a PC.
+  // Only treat it as "mobile" using a real signal, not just API presence.
+  function isMobileDevice() {
+    if (navigator.userAgentData && typeof navigator.userAgentData.mobile === "boolean") {
+      return navigator.userAgentData.mobile;
+    }
+    return /Android|iPhone|iPad|iPod|Windows Phone|Mobile/i.test(navigator.userAgent || "");
+  }
+
   async function shareOrDownloadExport() {
     const ch = DATA.find((c) => c.num === activeChapter);
     const text = buildExportText();
@@ -743,7 +753,7 @@
     const filename = `PYQ-Atlas_${sanitizeFilename(namePart)}.txt`;
     const blob = new Blob([text], { type: "text/plain" });
 
-    if (typeof navigator.share === "function") {
+    if (isMobileDevice() && typeof navigator.share === "function") {
       try {
         const file = new File([blob], filename, { type: "text/plain" });
         if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
