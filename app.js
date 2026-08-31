@@ -670,7 +670,7 @@
     renderChapter();
   });
 
-  function buildExportText() {
+  function buildNormalExportText() {
     const ch = DATA.find((c) => c.num === activeChapter);
     if (!ch) return "";
 
@@ -736,6 +736,70 @@
     return lines.join("\n");
   }
 
+  // mirrors renderChapterBulletMode()'s exact logic (same extractBulletChildren
+  // call, same topic-vs-child fallback rule, same checkbox IDs) so the export
+  // can never drift from whatever's actually shown on screen in Bullet mode
+  function buildBulletExportText() {
+    const ch = DATA.find((c) => c.num === activeChapter);
+    if (!ch) return "";
+
+    const typeLabel = typeFilter === "all" ? "All (LAQ + SAQ + MCQ)" : typeFilter.toUpperCase();
+    const sortLabel = sortMode === "frequency" ? "Most repeated first" : "Textbook order";
+    const recencyLabel =
+      recencyFilter === "recent"
+        ? `Last ${recencyN} year${recencyN === 1 ? "" : "s"} only (${sinceYear()}–${META.maxYear})`
+        : "All years";
+
+    const lines = [];
+    lines.push("PYQ ATLAS — EXPORTED BULLET-MODE OVERVIEW");
+    lines.push("=".repeat(48));
+    lines.push(`Subject:  ${SUBJECT_LABELS[activeSubject] || activeSubject}`);
+    lines.push(`Chapter:  ${ch.title}`);
+    lines.push(`Mode:     Bullet (concept overview, not full Q&A text)`);
+    lines.push(`Filters applied to produce this file —`);
+    lines.push(`  Type:     ${typeLabel}`);
+    lines.push(`  Order:    ${sortLabel}`);
+    lines.push(`  Recency:  ${recencyLabel}`);
+    lines.push(`Exported: ${new Date().toLocaleString()}`);
+    lines.push("=".repeat(48));
+    lines.push("");
+
+    const topics = getFilteredSortedTopics(ch);
+
+    if (topics.length === 0) {
+      lines.push("(No questions match the current filters.)");
+      return lines.join("\n");
+    }
+
+    const freqSuffix = recencyFilter === "recent" ? `in last ${recencyN} yr${recencyN === 1 ? "" : "s"}` : "total";
+
+    topics.forEach((topic) => {
+      lines.push(`## ${topic.name}  (${topic.freq}× ${freqSuffix})`);
+      const children = extractBulletChildren(topic);
+      if (children.length === 0) {
+        // same "topic stands alone" fallback rule used on screen
+        const id = `bullet-ch${ch.num}-tp${topic.textbook_order}-topic`;
+        const mark = bulletCheckedState[id] ? "[x]" : "[ ]";
+        lines.push(`  ${mark} ${topic.name} (${topic.freq}×)`);
+      } else {
+        children.forEach((child) => {
+          const id = `bullet-ch${ch.num}-tp${topic.textbook_order}-${bulletSlug(child.label)}`;
+          const mark = bulletCheckedState[id] ? "[x]" : "[ ]";
+          lines.push(`  ${mark} ${child.label} (${child.count}×)`);
+        });
+      }
+      lines.push("");
+    });
+
+    return lines.join("\n");
+  }
+
+  // dispatcher: keeps the single call site in shareOrDownloadExport() simple,
+  // and guarantees the export always matches whichever mode is on screen
+  function buildExportText() {
+    return viewMode === "bullet" ? buildBulletExportText() : buildNormalExportText();
+  }
+
   // desktop browsers (Edge on Windows, Safari on macOS) increasingly expose
   // navigator.share too, which would wrongly pop the share sheet on a PC.
   // Only treat it as "mobile" using a real signal, not just API presence.
@@ -750,7 +814,8 @@
     const ch = DATA.find((c) => c.num === activeChapter);
     const text = buildExportText();
     const namePart = ch ? `${SUBJECT_LABELS[activeSubject] || ""}_${ch.title}` : "export";
-    const filename = `PYQ-Atlas_${sanitizeFilename(namePart)}.txt`;
+    const modeSuffix = viewMode === "bullet" ? "_bullet-mode" : "";
+    const filename = `PYQ-Atlas_${sanitizeFilename(namePart)}${modeSuffix}.txt`;
     const blob = new Blob([text], { type: "text/plain" });
 
     if (isMobileDevice() && typeof navigator.share === "function") {
