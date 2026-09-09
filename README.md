@@ -2,7 +2,7 @@
 
 A static, filterable dashboard mapping every MCQ / SAQ / LAQ across the MUHS
 Pathology verbatim PYQ banks (Paper 1 — General Pathology, chapters 1–8;
-Paper 2 — Systemic Pathology, chapters 9–26 + Appendix I), the Microbiology
+Paper 2 — Systemic Pathology, chapters 9–27 + Appendix I), the Microbiology
 bank (9 organ-system sections, ~64 textbook chapters, MCQ+SAQ+LAQ), and the
 Pharmacology bank (14 subject areas, ~70 textbook subtopics, MCQ+SAQ+LAQ) to
 a topic, showing how many exam sittings each topic and each individual
@@ -65,6 +65,14 @@ result into the existing chapter set. Just ask, and attach the new file.
 
 - **Occurrence count** for a single question = number of exam-sitting codes
   attached to it, e.g. `(W-13,18)` counts as 2, `(S-15)(W-17,20)` counts as 3.
+- **Chapter numbering can shift**: Paper 2's Chapter 13 "Blood Vessels and
+  Lymphatics" was inserted after the original data was built, pushing every
+  subsequent Paper 2 chapter (old Ch.13 Cardiovascular System through old
+  Ch.26 Nervous System) up by one, so they're now Ch.14–27. This was a
+  deliberate one-time reordering, not a bug — but it means checkbox IDs for
+  those chapters changed (IDs embed the chapter number), so any
+  previously-checked boxes in Ch.13 onward from before this update won't
+  carry over.
 - **Attitude, Ethics & Communication (AETCOM)** is a new topic type, added
   when the Summer 2025 papers (S-25) introduced NMC-mandated bioethics/
   communication questions (informed consent, patient autonomy, professional
